@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Agenda Quotidien</title>
+
+    <!-- Icônes & Configuration PWA -->
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0b0b0e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Agenda Quotidien">
+
+    <style>
+        :root {
+            --bg-color: #0b0b0e;
+            --card-bg: #18181f;
+            --text-color: #f0f0f5;
+            --text-muted: #8e8e99;
+            --accent-gold: #d4af37;
+            --border-color: #2a2a35;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 15px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        header {
+            text-align: center;
+            padding-top: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Intégration propre du logo en haut */
+        .logo-container img {
+            width: 65px;
+            height: 65px;
+            object-fit: contain;
+            border-radius: 50%;
+            border: 2px solid var(--accent-gold);
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2);
+            background: var(--card-bg);
+        }
+
+        header h1 {
+            font-size: 1.4rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+            color: var(--text-color);
+        }
+
+        .section-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            text-align: center;
+            transition: opacity 0.5s ease;
+        }
+
+        /* Rouleaux de sélection */
+        .picker-box {
+            background: var(--card-bg);
+            border: 2px solid var(--accent-gold);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            transition: opacity 0.5s ease;
+        }
+
+        /* Effet de disparition (fondu) */
+        .fade-out {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        .picker-controls {
+            display: flex;
+            gap: 12px;
+        }
+
+        .select-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .select-label {
+            font-size: 0.75rem;
+            color: var(--accent-gold);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            background: #141418;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 1rem;
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg fill='%23d4af37' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+        }
+
+        select:focus {
+            border-color: var(--accent-gold);
+        }
+
+        /* Affichage de la carte */
+        .card-display-area {
+            height: 220px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .playing-card {
+            width: 140px;
+            height: 200px;
+            background: #ffffff;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+            transition: opacity 0.5s ease, transform 0.4s ease;
+            opacity: 0;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .playing-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .playing-card.hidden {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        .card-corner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1;
+            font-weight: bold;
+            font-size: 1.3rem;
+        }
+
+        .card-corner.bottom {
+            transform: rotate(180deg);
+        }
+
+        .card-center-symbol {
+            font-size: 3rem;
+            text-align: center;
+            align-self: center;
+        }
+
+        .red { color: #e53935; }
+        .black { color: #1e1e24; }
+
+        /* Bloc Citation & Bouton Secret */
+        .thought-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+            position: relative;
+            user-select: none;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .thought-box:active {
+            background: #25252e;
+        }
+
+        .thought-text {
+            font-size: 1rem;
+            line-height: 1.5;
+            color: var(--text-color);
+            font-style: italic;
+        }
+
+        .secret-info {
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px dashed var(--accent-gold);
+            color: var(--accent-gold);
+            font-weight: 600;
+            font-size: 1.05rem;
+            display: none;
+            font-style: normal;
+        }
+
+        .secret-info.visible {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="logo-container">
+            <img src="logo.png" alt="Logo" onerror="this.style.display='none';">
+        </div>
+        <h1>Agenda Quotidien</h1>
+    </header>
+
+    <div>
+        <div id="sectionTitle" class="section-title">Sélection du jour</div>
+        <div id="pickerBox" class="picker-box">
+            <div class="picker-controls">
+                <div class="select-wrapper">
+                    <label class="select-label" for="daySelect">Jour</label>
+                    <select id="daySelect"></select>
+                </div>
+                <div class="select-wrapper">
+                    <label class="select-label" for="monthSelect">Mois</label>
+                    <select id="monthSelect"></select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-display-area">
+        <div id="playingCard" class="playing-card hidden">
+            <div class="card-corner top">
+                <span class="card-value"></span>
+                <span class="card-suit"></span>
+            </div>
+            <div class="card-center-symbol"></div>
+            <div class="card-corner bottom">
+                <span class="card-value"></span>
+                <span class="card-suit"></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="thoughtBox" class="thought-box">
+        <div id="thoughtText" class="thought-text"></div>
+        <div id="secretInfo" class="secret-info"></div>
+    </div>
+</div>
+
+<script>
+    // Ordre du chapelet Bart Harding (1 à 52)
+    const stack = [
+        { val: "10", suit: "♣", color: "black", pos: 1 },
+        { val: "7",  suit: "♥", color: "red", pos: 2 },
+        { val: "4",  suit: "♠", color: "black", pos: 3 },
+        { val: "A",  suit: "♦", color: "red", pos: 4 },
+        { val: "V",  suit: "♦", color: "red", pos: 5 },
+        { val: "6",  suit: "♣", color: "black", pos: 6 },
+        { val: "7",  suit: "♣", color: "black", pos: 7 },
+        { val: "9",  suit: "♠", color: "black", pos: 8 },
+        { val: "6",  suit: "♦", color: "red", pos: 9 },
+        { val: "A",  suit: "♣", color: "black", pos: 10 },
+        { val: "V",  suit: "♣", color: "black", pos: 11 },
+        { val: "8",  suit: "♥", color: "red", pos: 12 },
+        { val: "5",  suit: "♠", color: "black", pos: 13 },
+        { val: "2",  suit: "♦", color: "red", pos: 14 },
+        { val: "D",  suit: "♦", color: "red", pos: 15 },
+        { val: "3",  suit: "♥", color: "red", pos: 16 },
+        { val: "R",  suit: "♥", color: "red", pos: 17 },
+        { val: "10", suit: "♠", color: "black", pos: 18 },
+        { val: "7",  suit: "♦", color: "red", pos: 19 },
+        { val: "2",  suit: "♣", color: "black", pos: 20 },
+        { val: "D",  suit: "♣", color: "black", pos: 21 },
+        { val: "9",  suit: "♥", color: "red", pos: 22 },
+        { val: "6",  suit: "♠", color: "black", pos: 23 },
+        { val: "3",  suit: "♦", color: "red", pos: 24 },
+        { val: "R",  suit: "♦", color: "red", pos: 25 },
+        { val: "4",  suit: "♥", color: "red", pos: 26 },
+        { val: "A",  suit: "♠", color: "black", pos: 27 },
+        { val: "V",  suit: "♠", color: "black", pos: 28 },
+        { val: "8",  suit: "♦", color: "red", pos: 29 },
+        { val: "3",  suit: "♣", color: "black", pos: 30 },
+        { val: "R",  suit: "♣", color: "black", pos: 31 },
+        { val: "10", suit: "♥", color: "red", pos: 32 },
+        { val: "7",  suit: "♠", color: "black", pos: 33 },
+        { val: "4",  suit: "♦", color: "red", pos: 34 },
+        { val: "8",  suit: "♣", color: "black", pos: 35 },
+        { val: "5",  suit: "♥", color: "red", pos: 36 },
+        { val: "2",  suit: "♠", color: "black", pos: 37 },
+        { val: "D",  suit: "♠", color: "black", pos: 38 },
+        { val: "9",  suit: "♦", color: "red", pos: 39 },
+        { val: "4",  suit: "♣", color: "black", pos: 40 },
+        { val: "A",  suit: "♥", color: "red", pos: 41 },
+        { val: "V",  suit: "♥", color: "red", pos: 42 },
+        { val: "8",  suit: "♠", color: "black", pos: 43 },
+        { val: "5",  suit: "♦", color: "red", pos: 44 },
+        { val: "9",  suit: "♣", color: "black", pos: 45 },
+        { val: "6",  suit: "♥", color: "red", pos: 46 },
+        { val: "3",  suit: "♠", color: "black", pos: 47 },
+        { val: "R",  suit: "♠", color: "black", pos: 48 },
+        { val: "10", suit: "♦", color: "red", pos: 49 },
+        { val: "5",  suit: "♣", color: "black", pos: 50 },
+        { val: "2",  suit: "♥", color: "red", pos: 51 },
+        { val: "D",  suit: "♥", color: "red", pos: 52 }
+    ];
+
+    const jokerCard = { val: "J", suit: "★", color: "red", name: "Joker", pos: "Joker" };
+
+    const months = [
+        { name: "Janvier", days: 31 },
+        { name: "Février", days: 29 },
+        { name: "Mars", days: 31 },
+        { name: "Avril", days: 30 },
+        { name: "Mai", days: 31 },
+        { name: "Juin", days: 30 },
+        { name: "Juillet", days: 31 },
+        { name: "Août", days: 31 },
+        { name: "Septembre", days: 30 },
+        { name: "Octobre", days: 31 },
+        { name: "Novembre", days: 30 },
+        { name: "Décembre", days: 31 }
+    ];
+
+    const quotes = [
+        "Aujourd'hui est une belle journée pour commencer quelque chose de nouveau.",
+        "Chaque moment est une opportunité d'apprendre et de grandir.",
+        "La simplicité est la clé de toute véritable élégance.",
+        "Prenez le temps d'apprécier les petites choses du quotidien.",
+        "Votre attitude détermine votre direction aujourd'hui.",
+        "Un petit pas chaque jour mène à de grands accomplissements.",
+        "Restez concentré sur ce qui compte vraiment pour vous.",
+        "La bienveillance envers soi-même est le premier pas vers le bonheur.",
+        "Laissez votre curiosité guider vos actions.",
+        "Le calme intérieur apporte la clarté d'esprit."
+    ];
+
+    let timer = null;
+    let secretState = 0; // 0 = normal, 1 = révélé, 2 = bloqué
+    let currentCardData = null;
+    let currentDayNum = null;
+    let currentMonthName = "";
+
+    const daySelect = document.getElementById("daySelect");
+    const monthSelect = document.getElementById("monthSelect");
+    const pickerBox = document.getElementById("pickerBox");
+    const sectionTitle = document.getElementById("sectionTitle");
+    const playingCard = document.getElementById("playingCard");
+    const thoughtBox = document.getElementById("thoughtBox");
+    const thoughtText = document.getElementById("thoughtText");
+    const secretInfo = document.getElementById("secretInfo");
+
+    function initPickers() {
+        daySelect.innerHTML = '<option value="" disabled selected>Jour</option>';
+        for (let i = 1; i <= 31; i++) {
+            const opt = document.createElement("option");
+            opt.value = i;
+            opt.textContent = i;
+            daySelect.appendChild(opt);
+        }
+
+        monthSelect.innerHTML = '<option value="" disabled selected>Mois</option>';
+        months.forEach((m, idx) => {
+            const opt = document.createElement("option");
+            opt.value = idx;
+            opt.textContent = m.name;
+            monthSelect.appendChild(opt);
+        });
+
+        daySelect.addEventListener("change", checkAndTriggerSelection);
+        monthSelect.addEventListener("change", checkAndTriggerSelection);
+    }
+
+    function checkAndTriggerSelection() {
+        const dayVal = daySelect.value;
+        const monthVal = monthSelect.value;
+
+        if (dayVal !== "" && monthVal !== "") {
+            const day = parseInt(dayVal);
+            const monthIdx = parseInt(monthVal);
+            const maxDaysInMonth = months[monthIdx].days;
+
+            if (day > maxDaysInMonth) {
+                daySelect.value = maxDaysInMonth;
+            }
+
+            onDateChanged();
+        }
+    }
+
+    function getCardForDate(day, monthIndex) {
+        if (monthIndex === 1 && day === 29) return jokerCard;
+        if (monthIndex === 11 && day === 25) return jokerCard;
+
+        let dayOfYear = 0;
+        for (let i = 0; i < monthIndex; i++) {
+            dayOfYear += (i === 1) ? 28 : months[i].days;
+        }
+        dayOfYear += day;
+
+        if (monthIndex > 1 || (monthIndex === 1 && day === 29)) {
+            dayOfYear -= 1;
+        }
+
+        if (monthIndex === 11 && day > 25) {
+            dayOfYear -= 1;
+        }
+
+        const stackIndex = ((dayOfYear - 1) % 52);
+        return stack[stackIndex];
+    }
+
+    function onDateChanged() {
+        if (secretState === 2) return;
+
+        const day = parseInt(daySelect.value);
+        const monthIdx = parseInt(monthSelect.value);
+        currentDayNum = day;
+        currentMonthName = months[monthIdx].name;
+
+        secretState = 0;
+        secretInfo.classList.remove("visible");
+        secretInfo.textContent = "";
+
+        const quoteIdx = (day + monthIdx * 31) % quotes.length;
+        thoughtText.textContent = quotes[quoteIdx];
+
+        currentCardData = getCardForDate(day, monthIdx);
+        renderCard(currentCardData);
+
+        playingCard.classList.remove("hidden");
+        playingCard.classList.add("visible");
+        pickerBox.classList.remove("fade-out");
+        sectionTitle.classList.remove("fade-out");
+
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => {
+            if (secretState === 0) {
+                playingCard.classList.remove("visible");
+                playingCard.classList.add("hidden");
+                pickerBox.classList.add("fade-out");
+                sectionTitle.classList.add("fade-out");
+            }
+        }, 5000);
+    }
+
+    function renderCard(card) {
+        playingCard.className = `playing-card visible ${card.color}`;
+        
+        const values = playingCard.querySelectorAll(".card-value");
+        const suits = playingCard.querySelectorAll(".card-suit");
+        const center = playingCard.querySelector(".card-center-symbol");
+
+        values.forEach(v => v.textContent = card.val);
+        suits.forEach(s => s.textContent = card.suit);
+        center.textContent = card.suit;
+    }
+
+    thoughtBox.addEventListener("click", () => {
+        if (!currentCardData) return;
+
+        if (secretState === 0) {
+            secretState = 1;
+            const cardName = currentCardData.name || `${currentCardData.val} de ${getSuitName(currentCardData.suit)}`;
+            const posText = typeof currentCardData.pos === "number" ? `Position ${currentCardData.pos}` : currentCardData.pos;
+            
+            secretInfo.textContent = `${cardName} — ${posText} (${currentDayNum} ${currentMonthName})`;
+            secretInfo.classList.add("visible");
+            
+            playingCard.classList.remove("hidden");
+            playingCard.classList.add("visible");
+            pickerBox.classList.remove("fade-out");
+            sectionTitle.classList.remove("fade-out");
+
+            if (timer) clearTimeout(timer);
+        } else if (secretState === 1) {
+            secretState = 2;
+            
+            playingCard.classList.remove("visible");
+            playingCard.classList.add("hidden");
+            pickerBox.classList.add("fade-out");
+            sectionTitle.classList.add("fade-out");
+
+            secretInfo.classList.remove("visible");
+            secretInfo.textContent = "";
+            thoughtText.textContent = "";
+        }
+    });
+
+    function getSuitName(suit) {
+        switch(suit) {
+            case "♣": return "Trèfle";
+            case "♥": return "Cœur";
+            case "♠": return "Pique";
+            case "♦": return "Carreau";
+            default: return "";
+        }
+    }
+
+    initPickers();
+</script>
+
+</body>
+</html>
